@@ -1,0 +1,160 @@
+FIFO VHDL
+
+
+
+
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
+entity fifo is
+    Port (
+        d     : in  STD_LOGIC_VECTOR(3 downto 0);
+        enq   : in  STD_LOGIC;
+        deq   : in  STD_LOGIC;
+        rst   : in  STD_LOGIC;
+        clk   : in  STD_LOGIC;
+        q     : out STD_LOGIC_VECTOR(3 downto 0) := "0000";
+        full  : out STD_LOGIC;
+        empty : out STD_LOGIC
+    );
+end fifo;
+
+architecture Behavioral of fifo is
+
+    type memory_type is array (0 to 3) of
+        STD_LOGIC_VECTOR(3 downto 0);
+
+    signal memory : memory_type := (others => (others => '0'));
+
+    signal front : integer range 0 to 3 := 0;
+    signal rear  : integer range 0 to 3 := 0;
+    signal count : integer range 0 to 4 := 0;
+
+begin
+
+    process(clk, rst)
+    begin
+
+        if rst = '1' then
+            front <= 0;
+            rear  <= 0;
+            count <= 0;
+            q     <= "0000";
+
+        elsif rising_edge(clk) then
+
+            if enq = '1' and count < 4 then
+                memory(rear) <= d;
+                rear <= (rear + 1) mod 4;
+                count <= count + 1;
+
+            elsif deq = '1' and count > 0 then
+                q <= memory(front);
+                front <= (front + 1) mod 4;
+                count <= count - 1;
+
+            end if;
+
+        end if;
+
+    end process;
+
+    full  <= '1' when count = 4 else '0';
+    empty <= '1' when count = 0 else '0';
+
+end Behavioral;
+
+
+
+
+test bench
+
+
+
+
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+
+ENTITY tb_fifo IS
+END tb_fifo;
+
+ARCHITECTURE behavior OF tb_fifo IS
+
+    COMPONENT fifo
+        PORT (
+            d     : IN  std_logic_vector(3 downto 0);
+            enq   : IN  std_logic;
+            deq   : IN  std_logic;
+            clk   : IN  std_logic;
+            rst   : IN  std_logic;
+            q     : OUT std_logic_vector(3 downto 0);
+            full  : OUT std_logic;
+            empty : OUT std_logic
+        );
+    END COMPONENT;
+
+    SIGNAL enq   : std_logic := '0';
+    SIGNAL deq   : std_logic := '0';
+    SIGNAL clk   : std_logic := '0';
+    SIGNAL rst   : std_logic := '0';
+
+    SIGNAL d     : std_logic_vector(3 downto 0) := (others => '0');
+    SIGNAL q     : std_logic_vector(3 downto 0);
+    SIGNAL full  : std_logic;
+    SIGNAL empty : std_logic;
+
+BEGIN
+
+    -- Instantiate FIFO module
+    uut: fifo
+        PORT MAP (
+            d     => d,
+            enq   => enq,
+            deq   => deq,
+            clk   => clk,
+            rst   => rst,
+            q     => q,
+            full  => full,
+            empty => empty
+        );
+
+    -- Clock generation
+    PROCESS
+    BEGIN
+        WAIT FOR 10 ns;
+        clk <= NOT clk;
+    END PROCESS;
+
+    -- Test stimulus
+    PROCESS
+    BEGIN
+
+        WAIT FOR 20 ns;
+        d   <= "1000";
+        enq <= '1';
+
+        WAIT FOR 20 ns;
+        d <= "1001";
+
+        WAIT FOR 20 ns;
+        d <= "1110";
+
+        WAIT FOR 20 ns;
+        d <= "1010";
+
+        WAIT FOR 30 ns;
+        enq <= '0';
+
+        WAIT FOR 30 ns;
+        deq <= '1';
+
+        WAIT;
+
+    END PROCESS;
+
+END behavior;
+
